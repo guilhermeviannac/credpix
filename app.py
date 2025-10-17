@@ -154,7 +154,7 @@ def dashboard_admin():
     cobrador_id = request.args.get("cobrador_id", type=int)
 
     page = request.args.get("page", 1, type=int)
-    per_page = 3
+    per_page = 10
 
     regioes = Regiao.query.all()
     cobradores = Usuario.query.filter_by(tipo="cobrador").all()
@@ -779,3 +779,4 @@ def logout():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
