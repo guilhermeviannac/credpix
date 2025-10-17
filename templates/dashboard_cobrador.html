@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Cobrador{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-speedometer2"></i> Cobranças do dia <strong>{{ hoje }}</strong></h2>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="row g-2 mb-4 align-items-end">
+                <!-- Filtro de Região -->
+                {% if session.tipo == "admin" %}
+                <div class="col-md-5 col-12">
+                    <label for="regiao_id" class="form-label fw-bold">Filtrar por Região</label>
+                    <select name="regiao_id" id="regiao_id" class="form-select">
+                        <option value="">Todas</option>
+                        {% for regiao in regioes %}
+                        <option value="{{ regiao.id }}" 
+                        {% if request.args.get('regiao_id_filtro', type=int) == regiao.id %}selected{% endif %}>
+                        {{ regiao.nome|capitalize }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Filtro de Cobrador -->
+                <div class="col-md-5 col-12">
+                    <label for="cobrador_id" class="form-label fw-bold">Filtrar por Cobrador</label>
+                    <select name="cobrador_id" id="cobrador_id" class="form-select">
+                        <option value="">Todos</option>
+                        {% for cobrador in cobradores %}
+                        <option value="{{ cobrador.id }}" 
+                        {% if request.args.get('cobrador_id_filtro', type=int) == cobrador.id %}selected{% endif %}>
+                        {{ cobrador.usuario|capitalize }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            
+            {% endif %}
+             
+                    <div class="col-md-4">
+                        <label for="data_filtro" class="form-label fw-bold">Filtrar por Data</label>
+                        <input type="date" class="form-control" id="data_filtro" name="data_filtro" value="{{ data_filtro_value }}">
+                    </div>
+                    <!-- Botão de Filtro -->
+                    <div class="col-md-2 col-12 text-end">
+                        <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                    </div>
+
+        </div>
+        </form>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Total Recebido ({{ hoje }})</h5>
+                <p class="card-text fs-4">{{ total_pago_hoje | moeda }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Total a Receber ({{ hoje }})</h5>
+                <p class="card-text fs-4">{{ total_nao_recebido | moeda }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Total do Dia</h5>
+                <p class="card-text fs-4">{{ total_a_receber | moeda }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4>Parcelas do Dia ({{ hoje }})</h4>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Cliente</th>
+                <th>Parcela</th>
+                <th>Valor</th>
+                <th>Valor Pago</th>
+                <th>Valor Restante</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for parcela, cliente in parcelas_hoje %}
+            <tr class="status-{{ parcela.status.replace('_', '-') }}">
+                <td>{{ cliente.nome }}</td>
+                <td>{{ parcela.numero_parcela }}</td>
+                <td>{{ parcela.valor | moeda }}</td>
+                <td>{{ parcela.valor_pago | moeda }}</td>
+                <td>{{ (parcela.valor - parcela.valor_pago) | moeda }}</td>
+                <td>
+                    {% if parcela.status == 'pago' %}
+                        <span class="badge bg-success">Pago</span>
+                    {% elif parcela.status == 'parcialmente_paga' %}
+                        <span class="badge bg-info">Parcialmente Paga</span>
+                    {% else %}
+                        <span class="badge bg-warning">Pendente</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if parcela.status != 'pago' %}
+                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalPagamento{{ parcela.id }}">
+                        <i class="bi bi-cash"></i> Receber
+                    </button>
+                    {% endif %}
+
+                    
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% for parcela, cliente in parcelas_hoje %}
+<div class="modal fade" id="modalPagamento{{ parcela.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Registrar Pagamento - Parcela {{ parcela.numero_parcela }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST" action="{{ url_for('receber_pagamento', parcela_id=parcela.id) }}">
+                                    <div class="modal-body">
+                                        <p><strong>Cliente:</strong> {{ cliente.nome }}</p>
+                                        <p><strong>Valor da Parcela:</strong> {{ parcela.valor | moeda }}</p>
+                                        <p><strong>Valor Já Pago:</strong> {{ parcela.valor_pago | moeda }}</p>
+                                        <p><strong>Valor Restante:</strong> {{ (parcela.valor - parcela.valor_pago) | moeda }}</p>
+                                        <div class="mb-3">
+                                            <label for="valor_pago{{ parcela.id }}" class="form-label">Valor do Pagamento</label>
+                                            <input type="number" step="0.01" class="form-control" id="valor_pago{{ parcela.id }}" name="valor_pago" max="{{ parcela.valor - parcela.valor_pago }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-success">Confirmar Pagamento</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+</div>
+{% endfor %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const buttons = document.querySelectorAll(".toggle-btn");
+
+    buttons.forEach(button => {
+        const icon = button.querySelector("i");
+        const target = document.querySelector(button.dataset.bsTarget);
+        const collapse = new bootstrap.Collapse(target, { toggle: false });
+
+        button.addEventListener("click", () => {
+            if (target.classList.contains("show")) {
+                collapse.hide();
+                icon.classList.remove("bi-chevron-up");
+                icon.classList.add("bi-chevron-down");
+            } else {
+                // Fecha outros abertos (opcional)
+                document.querySelectorAll(".collapse.show").forEach(opened => {
+                    opened.classList.remove("show");
+                    const openedBtn = document.querySelector(`[data-bs-target="#${opened.id}"] i`);
+                    if (openedBtn) {
+                        openedBtn.classList.remove("bi-chevron-up");
+                        openedBtn.classList.add("bi-chevron-down");
+                    }
+                });
+
+                collapse.show();
+                icon.classList.remove("bi-chevron-down");
+                icon.classList.add("bi-chevron-up");
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}

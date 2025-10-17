@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastrar Região{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-geo-alt"></i> Cadastrar Região</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nome" class="form-label fw-bold">Nome da Região</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cobradores <span>(selecione cobradores para a região)</span></label>
+                        {% for cobrador in cobradores %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="cobradores" value="{{ cobrador.id }}" id="cob{{ cobrador.id }}">
+                            <label class="form-check-label" for="cob{{ cobrador.id }}">
+                                {{ cobrador.usuario|upper }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Cadastrar</button>
+                    <a href="{{ url_for('dashboard_admin') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

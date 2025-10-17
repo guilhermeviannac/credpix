@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Listar Cobradores{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/5/w3.css">
+
+<div class="d-flex justify-content-between align-items-center mb-3">   
+    <div>
+        <h2><i class="bi bi-people"></i>Usuários</h2>
+    </div>
+    <button id="meuBotao" class="w3-btn w3-blue w3-xlarge w3-circle w3-card-2"><i class="fa fa-plus"></i></button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Usuário</th>
+                    <th>Tipo</th>
+                    <th>Regiões</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cobrador in usuario %}
+                <tr>
+                    <td>{{ cobrador.id }}</td>
+                    <td>{{ cobrador.usuario|capitalize }}</td>
+                    <td>{{ cobrador.tipo|capitalize }}</td>
+                    <td>
+                        {% for regiao in cobrador.regioes %}
+                            <span class="badge bg-info">{{ regiao.nome|upper }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('excluir_cobrador', id=cobrador.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Excluir cobrador?')">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    const meuBotao = document.getElementById('meuBotao');
+
+    meuBotao.addEventListener('click', function(){
+        const urlDestino = window.location.href = ('cadastrar_cobrador');
+    });
+</script>
+{% endblock %}

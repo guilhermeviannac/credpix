@@ -1,0 +1,550 @@
+    {% extends "base.html" %}
+
+    {% block title %}Dashboard Admin{% endblock %}
+
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+    {% block content %}
+    <h2><i class="bi bi-speedometer2"></i> Dashboard Administrativo</h2>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="regiao_id" class="form-label fw-bold">Filtrar por Região</label>
+                            <select class="form-select" id="regiao_id" name="regiao_id">
+                                <option value="">Todas as Regiões</option>
+                                {% for regiao in regioes %}
+                                <option value="{{ regiao.id }}" {% if regiao.id == regiao_selecionada %}selected{% endif %}>
+                                    {{ regiao.nome|upper }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="cobrador_id" class="form-label fw-bold">Filtrar por Cobrador</label>
+                            <select class="form-select" id="cobrador_id" name="cobrador_id">
+                                <option value="">Todos os Cobradores</option>
+                                {% for cobrador in cobradores %}
+                                <option value="{{ cobrador.id }}" {% if cobrador.id == cobrador_selecionado %}selected{% endif %}>
+                                    {% for regiao in cobrador.regioes %}
+                                    {{ cobrador.usuario|upper }}({{ regiao.nome }})
+                                    {% endfor %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Filtrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🧾 Contador e descrição -->
+    <div class="alert alert-info py-2">
+      <strong>{{ clientes|length }}</strong> cliente{{ 's' if clientes|length != 1 else '' }} encontrados
+      {% if regiao_selecionada or cobrador_selecionado %}
+        —
+        {% if regiao_selecionada %}
+          Região:
+          <strong>
+            {{ regioes|selectattr('id', 'equalto', regiao_selecionada)|map(attribute='nome')|first|upper }}
+          </strong>
+        {% endif %}
+        {% if cobrador_selecionado %}
+          {% if regiao_selecionada %} • {% endif %}
+          Cobrador:
+          <strong>
+            {{ cobradores|selectattr('id', 'equalto', cobrador_selecionado)|map(attribute='usuario')|first|upper }}
+          </strong>
+        {% endif %}
+      {% else %}
+        — mostrando todos os clientes
+      {% endif %}
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">Total Recebido</h5>
+                    <p class="card-text fs-4">{{ total_recebido | moeda }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Total a Receber</h5>
+                    <p class="card-text fs-4">{{ total_a_receber | moeda }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h5 class="card-title">Total Atrasado</h5>
+                    <p class="card-text fs-4">{{ total_atrasado | moeda }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+ <!-- Busca Cliente -->
+  <div class="mb-4">
+    <input type="text" id="buscaCliente" class="form-control" placeholder="🔍 Buscar cliente por nome ou telefone...">
+  </div>
+
+    <h4>Clientes e Empréstimos</h4>
+    {% for cliente in clientes %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+            <h5 class="mb-0"><strong>Cliente: {{ cliente.nome|upper }}</strong></h5>
+            <small class="">
+                Região: {{ cliente.regiao.nome if cliente.regiao else 'N/A' }} |
+                Cob.: {{ cliente.cobrador.usuario|capitalize }}</small><br>       
+            <small>{{ cliente.endereco }} | Tel: {{ cliente.telefone }}</small>
+            </div>
+
+        <button class="btn btn-outline-success" 
+            data-bs-toggle="modal"
+            data-bs-target="#novoEmprestimoModal"
+            data-cliente-id="{{ cliente.id }}"
+            data-cliente-nome="{{ cliente.nome }}">
+            <i class="bi bi-plus-circle"></i>
+        </button>
+    </div>
+        <div class="card-body">
+            {% if cliente.emprestimos %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Frequência</th>
+                            <th>Data Empr.</th>
+                            <th>Valor</th>
+                            <th>Juros</th>
+                            <th>Total</th>
+                            <th>Pago</th>
+                            <th>Pendente</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emprestimo in cliente.emprestimos %}
+                        <tr>
+                            <td>{{ emprestimo.frequencia | capitalize }}</td>
+                            <td>{{ emprestimo.data_emprestimo.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ emprestimo.valor | moeda }}</td>
+                            <td>{{ emprestimo.porcentagem }}%</td>
+                            <td>{{ emprestimo.valor_total | moeda }}</td>
+                            <td>{{ emprestimo.total_pago | moeda }}</td>
+                            <td>{{ emprestimo.total_pendente | moeda }}</td>
+                            <td>
+                                {% if emprestimo.status == 'quitado' %}
+                                    <span class="badge bg-success">Quitado</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Em Aberto</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" data-bs-toggle="collapse" data-bs-target="#parcelas{{ emprestimo.id }}">
+                                    Ver
+                                </button>
+                                <!-- a href="{{ url_for('excluir_emprestimo', id=emprestimo.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Excluir este empréstimo?')">
+                                    Excluir
+                                </a -->
+                                <button class="btn btn-sm btn-outline-primary"
+                                        onclick="abrirModalEditarEmprestimo({
+                                            id: '{{ emprestimo.id }}',
+                                            valor: '{{ emprestimo.valor }}',
+                                            porcentagem: '{{ emprestimo.porcentagem }}',
+                                            frequencia: '{{ emprestimo.frequencia }}',
+                                            saldo: '{{ emprestimo.saldo }}',
+                                            cliente_id: '{{ emprestimo.cliente_id }}',
+                                            qtd_parcelas: '{{ emprestimo.qtd_parcelas }}',
+                                            data_emprestimo: '{{ emprestimo.data_emprestimo }}',
+                                            cliente_nome: '{{ emprestimo.cliente.nome }}'
+                                        })">
+                                        Editar
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="9" class="p-0">
+                                <div class="collapse" id="parcelas{{ emprestimo.id }}">
+                                    <div class="p-3 bg-light">
+                                        <h6>Parcelas do Empréstimo</h6>
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nº</th>
+                                                    <th>Valor</th>
+                                                    <th>Valor Pago</th>
+                                                    <th>Vencimento</th>
+                                                    <th>Status</th>
+                                                    <th>Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for parcela in emprestimo.parcelas %}
+                                                <tr>
+                                                    <td>{{ parcela.numero_parcela }}</td>
+                                                    <td>{{ parcela.valor | round(2) | moeda }}</td>
+                                                    <td>{{ parcela.valor_pago | round(2) | moeda }}</td>
+                                                    <td>{{ parcela.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                                                    <td>
+                                                        {% if parcela.status == 'pago' %}
+                                                            <span class="badge bg-success">Pago</span>
+                                                        {% elif parcela.status == 'parcialmente_paga' %}
+                                                            <span class="badge bg-info">Parcial</span>
+                                                        {% elif parcela.data_vencimento < now %}
+                                                            <span class="badge bg-danger">Atrasado</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">Pendente</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if parcela.status != 'pago' %}
+                                                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalPagamento{{ parcela.id }}">
+                                                            Receber
+                                                        </button>
+                                                        {% endif %}
+
+                                                        
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Nenhum empréstimo cadastrado.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Paginação de clientes -->
+    <nav aria-label="Navegação de páginas" class="mt-3">
+        <ul class="pagination justify-content-center">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard_admin', page=pagination.prev_num) }}">Anterior</a>
+            </li>
+            {% else %}
+            <li class="page-tem disable"><span class="page-link">Anterior</span></li>
+            {% endif %}
+
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                    {% if p == pagination.page %}
+                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                    {% else %}
+                        <li class="page-item"><a href="{{ url_for('dashboard_admin', page=p) }}" class="page-link">{{ p }}</a></li>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('dashboard_admin', page=pagination.next_num) }}">Próximo</a>
+                </li>
+            {% else %}
+                <li class="page-item disable"><span class="page-link">Próximo</span></li>
+            {% endif %}
+        </ul>
+    </nav>
+
+{% for cliente in clientes %}
+    {% for emprestimo in cliente.emprestimos %}
+        {% for parcela in emprestimo.parcelas %}
+<div class="modal fade" id="modalPagamento{{ parcela.id }}" tabindex="-1" role="dialog">
+                                                            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                                                                <div class="modal-content">
+                                                                    <div class="modal-header bg-primary text-white">
+                                                                        <h5 class="modal-title" id="modalPagamentoLabel{{ parcela.id }}"><i class="fas fa-donate"></i>Registrar Pagamento</h5>
+                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                                    </div>
+                                                                    <form method="POST" action="{{ url_for('receber_pagamento', parcela_id=parcela.id) }}">
+                                                                        <div class="modal-body">
+                                                                            <p><strong>Cliente:</strong> {{ cliente.nome }}</p>
+                                                                            <p><strong>Parcela:</strong> {{ parcela.numero_parcela }}</p>
+                                                                            <p><strong>Valor:</strong> {{ parcela.valor | moeda }}</p>
+                                                                            <p><strong>Já Pago:</strong> {{ parcela.valor_pago | moeda }}</p>
+                                                                            <p><strong>Restante:</strong> {{ (parcela.valor - parcela.valor_pago) | moeda }}</p>
+                                                                            <div class="mb-3">
+                                                                                <label class="form-label fw-bold">Valor do Pagamento</label>
+                                                                                <input type="number" step="0.01" class="form-control" name="valor_pago" max="{{ parcela.valor - parcela.valor_pago }}" required>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                                            <button type="submit" class="btn btn-success">Confirmar</button>
+                                                                        </div>
+                                                                    </form>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+{% endfor %}
+    {% endfor %}
+        {% endfor %}
+
+
+{% if todos_emprestimos %}
+<!-- Modal Registrar novo Emprestimo -->
+<div class="modal fade" id="novoEmprestimoModal" tabindex="-1" aria-labelledby="novoEmprestimoModal" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('adicionar_emprestimo') }}">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="novoEmprestimoModal">Adicionar Novo Empréstimo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+
+        <div class="modal-body">
+          
+          <!-- Cliente (preenchido automaticamente via JS) -->
+            <input type="hidden" name="cliente_id" id="cliente_id">
+          <div class="mb-3">
+            <label for="" class="form-label">Cliente</label>
+            <input type="text" id="cliente_nome" name="cliente_nome" class="form-control" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label for="valor" class="form-label">Valor do Empréstimo (R$)</label>
+            <input type="number" name="valor" id="valor" step="0.01" class="form-control" placeholder="Ex: 500.00" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="porcentagem" class="form-label">Porcentagem (%)</label>
+            <input type="number" name="porcentagem" id="porcentagem" step="0.01" class="form-control" placeholder="Ex: 10" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="frequencia" class="form-label">Frequência de Pagamento</label>
+            <select name="frequencia" id="frequencia" class="form-select" required>
+              <option value="">Selecione</option>
+              <option value="diaria">Diária</option>
+              <option value="semanal">Semanal</option>
+              <option value="mensal">Mensal</option>
+            </select>
+          </div>
+          <div class="mb-3" id="div_qtd_parcelas" style="display: none;">
+            <label for="qtd_parcelas" class="form-label">Qtd. de parcelas diária</label>
+            <input type="number" name="qtd_parcelas" id="qtd_parcelas" class="form-control" placeholder="Ex: 20">
+          </div>
+
+          <div class="mb-3">
+            <label for="data_emprestimo" class="form-label">Data do Empréstimo</label>
+            <input type="date" name="data_emprestimo" id="data_emprestimo" class="form-control" required>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button"  class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Cadastrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Empréstimo -->
+{% for cliente in clientes %}
+    {% for emprestimo in cliente.emprestimos %}
+    <div class="modal fade" id="modalEditarEmprestimo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <form method="POST" id="form-editar-emprestimo">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">Editar Empréstimo — <span id="titulo-nome-cliente"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="emprestimo-id">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Cliente</label>
+            <input type="text" class="form-control" id="emprestimo-nome-cliente" name="cliente_nome" readonly="">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Valor</label>
+            <input type="number" step="0.01" class="form-control" id="emprestimo-valor" name="valor" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Porcentagem</label>
+            <input type="number" step="0.01" class="form-control" id="emprestimo-porcentagem" name="porcentagem" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Frequência de Pagamento</label>
+            <select name="frequencia" id="emprestimo-frequencia" class="form-select">
+              <option value="">Selecione</option>
+              <option value="diaria">Diária</option>
+              <option value="semanal">Semanal</option>
+              <option value="mensal">Mensal</option>
+            </select>
+            <!--input type="text" class="form-control" id="emprestimo-frequencia" name="frequencia" required -->
+          </div>
+          <div class="mb-3" id="divqtd_parcelas" style="display: none;">
+            <label for="qtd_parcelas" class="form-label fw-bold">Qtd. de parcelas diária</label>
+            <input type="number" name="qtd_parcelas" id="qtd_parcelas" class="form-control" placeholder="Ex: 20">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Data do Empréstimo</label>
+            <input type="date" class="form-control" id="emprestimo-data" name="data_emprestimo" required>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between align-items-center">
+        <a id="btnExcluirEmprestimo" href="#" class="btn btn-sm btn-outline-danger">Excluir</a>
+        <div>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+          
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+    {% endfor %}
+{% endfor %}
+{% endif %}
+
+<script>
+// --- Modal Novo Empréstimo ---
+const novoEmprestimoModal = document.getElementById('novoEmprestimoModal');
+novoEmprestimoModal.addEventListener('show.bs.modal', event => {
+  const button = event.relatedTarget;
+  const clienteId = button.getAttribute('data-cliente-id');
+  const clienteNome = button.getAttribute('data-cliente-nome');
+
+  //condição para aparecer input de qtd_parcelas
+  document.getElementById("frequencia").addEventListener("change", function(){
+    const divParcelas = document.getElementById("div_qtd_parcelas");
+    if (this.value == "diaria"){
+      divParcelas.style.display = "block";
+      document.getElementById("qtd_parcelas").required = true;
+    } else {
+      divParcelas.style.display = "none";
+      document.getElementById("qtd_parcelas").required = false;
+    }
+  });
+
+  document.getElementById('cliente_id').value = clienteId;
+  document.getElementById('cliente_nome').value = clienteNome;
+  document.getElementById('form-adicionar-emprestimo').action = `/adicionar_emprestimo/${clienteId}`;
+});
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const inputBusca = document.getElementById("buscaCliente");
+  const clientesCards = document.querySelectorAll(".card.mb-3");
+  const contador = document.querySelector(".alert.alert-info strong"); // pega o número que já aparece no topo
+
+  inputBusca.addEventListener("keyup", () => {
+    const termo = inputBusca.value.toLowerCase();
+    let encontrados = 0;
+
+    clientesCards.forEach(card => {
+      const nome = card.querySelector("h5 strong")?.textContent.toLowerCase() || "";
+      const telefone = card.querySelector(".card-header small")?.textContent.toLowerCase() || "";
+
+      if (nome.includes(termo) || telefone.includes(termo)) {
+        card.style.display = "";
+        encontrados++;
+      } else {
+        card.style.display = "none";
+      }
+    });
+
+    // Atualiza o contador no alerta
+    contador.textContent = encontrados;
+
+    // Atualiza o texto "cliente(s)" automaticamente
+    const texto = contador.parentNode;
+    if (encontrados === 1) {
+      texto.innerHTML = `<strong>${encontrados}</strong> cliente encontrado`;
+    } else if (encontrados == 0) {
+        texto.innerHTML = `<strong>${encontrados}</strong> nenhum cliente encontrado`;
+    } 
+    else {
+      texto.innerHTML = `<strong>${encontrados}</strong> clientes encontrados`;
+    }
+  });
+});
+
+  // --- Modal Editar Empréstimo ---
+function toggleQtdParcelas() {
+  const freq = document.getElementById("emprestimo-frequencia").value;
+  const divParcelas = document.getElementById("divqtd_parcelas");
+
+  if (freq === "diaria") {
+    divParcelas.style.display = "block";
+    document.getElementById("qtd_parcelas").required = true;
+  } else {
+    divParcelas.style.display = "none";
+    document.getElementById("qtd_parcelas").required = false;
+    document.getElementById("qtd_parcelas").value = "";
+  }
+}
+
+// evento pra atualizar dinamicamente quando o usuário muda a frequência
+document.getElementById("emprestimo-frequencia").addEventListener("change", toggleQtdParcelas);
+  
+  window.abrirModalEditarEmprestimo = function(emprestimo) {
+    console.log(emprestimo);
+    document.getElementById("emprestimo-id").value = emprestimo.id;
+    document.getElementById("emprestimo-valor").value = emprestimo.valor;
+    document.getElementById("emprestimo-porcentagem").value = emprestimo.porcentagem;
+    document.getElementById("emprestimo-frequencia").value = emprestimo.frequencia;
+    document.getElementById("emprestimo-data").value = emprestimo.data_emprestimo.split(' ')[0];
+
+    //preenche input com nome do cliente
+    document.getElementById("emprestimo-nome-cliente").value = emprestimo.cliente_nome || "";
+
+    //titulo pega o nome do cliente
+    document.getElementById("titulo-nome-cliente").textContent = emprestimo.cliente_nome.toUpperCase();
+
+    //preenche qtd_parcelas se existir
+    document.getElementById("qtd_parcelas").value = emprestimo.parcelas || "";
+
+    //aqui o segredo pra forçar o update da exibição
+    toggleQtdParcelas();
+
+    document.getElementById("form-editar-emprestimo").action = `/editar_emprestimo/${emprestimo.id}`;
+
+    // Atualiza o link de exclusão corretamente
+    const btnExcluir = document.getElementById("btnExcluirEmprestimo");
+    btnExcluir.href = `/excluir_emprestimo/${emprestimo.id}`;
+    btnExcluir.onclick = function() {
+    return confirm(`Tem certeza que deseja excluir o empréstimo ${emprestimo.frequencia.toUpperCase()} do cliente ${emprestimo.cliente_nome.toUpperCase() }?`);
+};
+
+    //define a ação do btn de exclusão
+    //document.getElementById("btnExcluirEmprestimo").onclick = function(){
+      //if (confirm("Tem certeza que deseja excluir este emprestimo?")){
+        //window.location.href = '/excluir_emprestimo/';
+      //}
+    //};
+
+    new bootstrap.Modal(document.getElementById("modalEditarEmprestimo")).show();
+  };
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastrar Usuario{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-person-badge"></i> Cadastrar Usuário</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="usuario" class="form-label fw-bold">Nome de Usuário</label>
+                        <input type="text" class="form-control" id="usuario" name="usuario" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="senha" class="form-label fw-bold">Senha</label>
+                        <input type="password" class="form-control" id="senha" name="senha" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tipo" class="form-label fw-bold">Tipo de Usuário</label>
+                        <select name="tipo" id="tipo" class="form-select" required>
+                            <option value="">Selecione...</option>
+                            <option value="admin">Admin</option>
+                            <option value="cobrador">Cobrador</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="div_regiao" style="display: none;">
+                        <label for="regiao_id" class="form-label fw-bold">Região</label>
+                        <select class="form-select" id="regiao_id" name="regiao_id">
+                            <option value="">Selecione uma região</option>
+                            {% for regiao in regioes %}
+                            <option value="{{ regiao.id }}">{{ regiao.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Cadastrar</button>
+                    <a href="{{ url_for('listar_cobradores') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function(){
+        const tipoSelect = document.getElementById("tipo");
+        const divRegiao = document.getElementById("div_regiao");
+
+        tipoSelect.addEventListener("change", function(){
+            if (this.value == "cobrador") {
+                divRegiao.style.display = "block";
+            } else {
+                divRegiao.style.display = "none";
+            }
+        });
+    });
+</script>
+
+{% endblock %}

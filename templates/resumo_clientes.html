@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Resumo de Clientes{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-people"></i> Resumo de Clientes e Empréstimos</h2>
+
+{% for item in dashboard %}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0 fw-bold">{{ item.cliente.nome|upper }}</h5>
+            <small>{{ item.cliente.endereco }} | Tel: {{ item.cliente.telefone }}</small>
+        </div>
+        <div>
+            <span class="badge bg-danger me-2">Atrasado: {{ totais_atrasados[item.cliente.id] | moeda }}</span>
+            <span class="badge bg-warning me-3">Pendente: {{ totais_pendentes[item.cliente.id] | moeda }}</span>
+            <button 
+                class="btn btn-sm btn-outline-info d-flex ms-auto align-items-center toggle-btn" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#parcelasCliente{{ item.cliente.id }}"
+                aria-expanded="false"
+                aria-controls="parcelasCliente{{ item.cliente.id }}">
+                <span>Abrir</span>
+                <i class="bi bi-chevron-down ms-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Collapse das parcelas -->
+<div class="collapse" id="parcelasCliente{{ item.cliente.id }}">
+    <div class="card-body">
+        {% for emprestimo in item.emprestimos %}
+        <div class="border rounded p-3 mb-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">
+                    Empréstimo #{{ emprestimo.id }} 
+                    <small class="text-muted">(Total: {{ emprestimo.valor_total | moeda }} | Pendente: {{ emprestimo.valor_pendente | moeda }})</small>
+                </h6>
+                <span class="badge bg-secondary">{{ emprestimo.frequencia|capitalize }}</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Parcela</th>
+                            <th>Valor</th>
+                            <th>Valor Pago</th>
+                            <th>Vencimento</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for parcela in emprestimo.parcelas %}
+                        <tr>
+                            <td>{{ parcela.numero_parcela }}</td>
+                            <td>{{ parcela.valor | moeda }}</td>
+                            <td>{{ parcela.valor_pago | moeda }}</td>
+                            <td>{{ parcela.data_vencimento.strftime('%d/%m/%Y') if parcela.data_vencimento else '-' }}</td>
+                            <td>
+                                {% if parcela.status == 'pago' %}
+                                    <span class="badge bg-success">Pago</span>
+                                {% elif parcela.data_vencimento and parcela.data_vencimento < hoje %}
+                                    <span class="badge bg-danger">Atrasada</span>
+                                {% elif parcela.status == 'parcialmente_paga' %}
+                                    <span class="badge bg-info">Parcial</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted">Nenhum empréstimo cadastrado para este cliente.</p>
+        {% endfor %}
+    </div>
+</div>
+
+</div>
+{% endfor %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const buttons = document.querySelectorAll(".toggle-btn");
+
+    buttons.forEach(button => {
+        const icon = button.querySelector("i");
+        const target = document.querySelector(button.dataset.bsTarget);
+        const collapse = new bootstrap.Collapse(target, { toggle: false });
+
+        button.addEventListener("click", () => {
+            if (target.classList.contains("show")) {
+                collapse.hide();
+                icon.classList.remove("bi-chevron-up");
+                icon.classList.add("bi-chevron-down");
+            } else {
+                // Fecha outros abertos (opcional)
+                document.querySelectorAll(".collapse.show").forEach(opened => {
+                    opened.classList.remove("show");
+                    const openedBtn = document.querySelector(`[data-bs-target="#${opened.id}"] i`);
+                    if (openedBtn) {
+                        openedBtn.classList.remove("bi-chevron-up");
+                        openedBtn.classList.add("bi-chevron-down");
+                    }
+                });
+
+                collapse.show();
+                icon.classList.remove("bi-chevron-down");
+                icon.classList.add("bi-chevron-up");
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

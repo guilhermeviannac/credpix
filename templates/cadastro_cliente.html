@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastrar Cliente{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-person-plus"></i> Cadastrar Cliente</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nome" class="form-label fw-bold">Nome</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required placeholder="Fulano de tal">
+                    </div>
+                    <div class="mb-3">
+                        <label for="telefone" class="form-label fw-bold">Telefone</label>
+                        <input type="text" class="form-control" id="telefone" name="telefone" placeholder="+55 (XX) XXXXX-XXXX">
+                    </div>
+                    <div class="mb-3">
+                        <label for="endereco" class="form-label fw-bold">Endereço</label>
+                        <input type="text" class="form-control" id="endereco" name="endereco" required placeholder="Rua B...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="regiao_id" class="form-label fw-bold">Região</label>
+                        <select class="form-select" id="regiao_id" name="regiao_id" required>
+                            <option value="">Selecione uma região</option>
+                            {% for regiao in regioes %}
+                            <option value="{{ regiao.id }}">{{ regiao.nome|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cobrador_id" class="form-label fw-bold">Cobrador</label>
+                        <select class="form-select" id="cobrador_id" name="cobrador_id" required>
+                            <option value="">Selecione um cobrador</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary fw-bold">Cadastrar</button>
+                    <a href="{{ url_for('listar_clientes') }}" class="btn btn-secondary fw-bold">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const regioes = {{ regioes|tojson }};
+    const selectRegiao = document.getElementById("regiao_id");
+    const selectCobrador = document.getElementById("cobrador_id");
+
+    selectRegiao.addEventListener("change", () => {
+        const regiaoId = parseInt(selectRegiao.value);
+        selectCobrador.innerHTML = '<option value="">Selecione o cobrador</option>';
+
+        if (!regiaoId) return;
+
+        const regiao = regioes.find(r => r.id === regiaoId);
+        if (regiao && regiao.cobradores) {
+            regiao.cobradores.forEach(c => {
+                const opt = document.createElement("option");
+                opt.value = c.id;
+                const nomeFormatado = c.usuario.charAt(0).toUpperCase() + c.usuario.slice(1).toLowerCase();
+                opt.textContent = nomeFormatado;
+                selectCobrador.appendChild(opt);
+            });
+        }
+    });
+
+    // ======== MÁSCARA DE TELEFONE + PLACEHOLDER ANIMADO ========
+    const telefoneInput = document.getElementById("telefone");
+
+    telefoneInput.placeholder = "+55 (__) _____-____";
+
+    telefoneInput.addEventListener("input", function (e) {
+        let valor = e.target.value.replace(/\D/g, ""); // Remove tudo que não é número
+
+        // Garante o +55 no início
+        if (!valor.startsWith("55")) {
+            valor = "55" + valor;
+        }
+
+        // Aplica a máscara gradualmente
+        let formatado = "+";
+        if (valor.length > 0) formatado += valor.substring(0, 2);
+        if (valor.length > 2) formatado += " (" + valor.substring(2, 4);
+        if (valor.length > 4) formatado += ") " + valor.substring(4, 9);
+        if (valor.length > 9) formatado += "-" + valor.substring(9, 13);
+
+        e.target.value = formatado;
+    });
+
+    telefoneInput.addEventListener("focus", function () {
+        if (!this.value) this.placeholder = "+55 (__) _____-____";
+    });
+
+    telefoneInput.addEventListener("blur", function () {
+        if (!this.value) this.placeholder = "+55 (__) _____-____";
+    });
+</script>
+
+{% endblock %}
